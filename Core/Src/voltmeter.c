@@ -8,7 +8,6 @@
 
 #define IDLE_TaskPriority 0
 
-
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
@@ -26,8 +25,13 @@ volatile xSemaphoreHandle Delay_Sem;
  volatile xQueueHandle ADC_Queue;
 
 
+ /**
+  * @brief funkcja Voltometer_init inicjalizuje semafory, kolejki oraz zadania potrzebne systemowi operacyjnemu FreeRTOS
+  * do poprawnego działania.
+  */
 void Voltmeter_init(void){
 
+	/** wykorzystywany w przerwaniu (podczas trybu continous) sygnalizując, że minęła kolejna sekunda.*/
 	Delay_Sem = xSemaphoreCreateBinary();
 
 	Term_Queue = xQueueCreate( 2, (unsigned portBASE_TYPE) sizeof(uint16_t));
@@ -35,10 +39,13 @@ void Voltmeter_init(void){
 
 	xTaskCreate(vTerminal,"Terminal",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,NULL);
 	xTaskCreate(vADC,"ADC",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,NULL);
-
-
 }
 
+/**
+ * @brief funkcja vTerminal wykorzystywana jest przez system operacyjny FreeRTOS.
+ * 	Spełnia zadanie komunikacji pomiędzy płytką a komputerem poprzez port szeregowy USART
+ * @param argument
+ */
 void vTerminal(void  * argument)
 {
 uint8_t i;
@@ -62,6 +69,15 @@ uint16_t tmp =0;
   }
 }
 
+
+/**
+ * @brief funkcja vADC przetwarza przesłane przez port komendy a następnie odpowiednio na nie reaguje.
+ * Odpowiada za pobranie wartości przetworzonego napięcia z przetworników, przełączanie między kanałami jak i ich tryby pracy
+ * dostępne są dwa tryby pracy:
+ * s - pojedynczy pomiar napięcia
+ * c - pomiar napięcia co 1s
+ * @param argument
+ */
 void vADC(void  * argument)
 {
 
