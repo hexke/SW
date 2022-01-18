@@ -5,6 +5,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/UART_Comm.c \
 ../Core/Src/freertos.c \
 ../Core/Src/main.c \
 ../Core/Src/stm32h7xx_hal_msp.c \
@@ -16,6 +17,7 @@ C_SRCS += \
 ../Core/Src/voltmeter.c 
 
 OBJS += \
+./Core/Src/UART_Comm.o \
 ./Core/Src/freertos.o \
 ./Core/Src/main.o \
 ./Core/Src/stm32h7xx_hal_msp.o \
@@ -27,6 +29,7 @@ OBJS += \
 ./Core/Src/voltmeter.o 
 
 C_DEPS += \
+./Core/Src/UART_Comm.d \
 ./Core/Src/freertos.d \
 ./Core/Src/main.d \
 ./Core/Src/stm32h7xx_hal_msp.d \

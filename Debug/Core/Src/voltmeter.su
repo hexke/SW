@@ -1,3 +1,3 @@
-voltmeter.c:51:6:Voltmeter_init	16	static
-voltmeter.c:69:6:vStartTerminal	40	static
-voltmeter.c:114:6:vStartADC	24	static
+voltmeter.c:29:6:Voltmeter_init	16	static
+voltmeter.c:42:6:vTerminal	32	static
+voltmeter.c:65:6:vADC	24	static

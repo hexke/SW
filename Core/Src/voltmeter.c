@@ -4,138 +4,94 @@
  *  Created on: 23 gru 2021
  *      Author: rczer
  */
-
-/*!
- * plik voltometer.c przechowuje funkcje związane z:
- *  - komunikacją przez terminal szeregowy USART
- *  - obsługiwaniem przetworników analogowo-cyfrowych do pomiaru napięć na wybranym kanale
- *
- *  dostępne dla użytkownika komendy:
- * @param c ustawia tryb continous przetwornika,
- * @param s dokonuje pomiaru na aktualnie aktywnym kanale przetwornika
- * @param i określa chęć zmiany kanału na inny. Poprzedza liczbową wartość kanału.
- * @param numerKanału poprzedza ją komenda "i". Numer kanału jest wartością liczbową 1,2 lub 3 określajacą, który kanał ma być aktywny
- */
-
 #include "voltmeter.h"
 
 #define IDLE_TaskPriority 0
 
-ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
-ADC_HandleTypeDef hadc3;
 
-/**
- * dostępne kanały przetwornika, między którymi można się przełączać
- */
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
+extern ADC_HandleTypeDef hadc3;
+extern TIM_HandleTypeDef htim6;
+
 const uint32_t AvailableADC[] = {
 		(uint32_t) &hadc1,
 		(uint32_t) &hadc2,
 		(uint32_t) &hadc3};
 
-TaskHandle_t* Terminal_CommHandle;
-TaskHandle_t* ADC_CommHandle;
 
-xQueueHandle Term_Queue;
-xQueueHandle ADC_Queue;
-xSemaphoreHandle Term_Sem;
-xSemaphoreHandle ADC_Sem;
+volatile xSemaphoreHandle Delay_Sem;
 
-uint8_t ReceivedDataFlag = 0; /*!< flaga kontrolująca czy pojawiła się nowa komenda */
-uint8_t ReceivedData; /*!< zmienna przechowująca przysłaną komendę */
+ xQueueHandle Term_Queue;
+ volatile xQueueHandle ADC_Queue;
 
-/**
- * @brief Tworzy semafory oraz zadania potrzebne systemu operacyjnemu FreeRTOS
- */
+
 void Voltmeter_init(void){
 
-	vSemaphoreCreateBinary(Term_Sem);
-	vSemaphoreCreateBinary(ADC_Sem);
+	Delay_Sem = xSemaphoreCreateBinary();
 
-	Term_Queue = xQueueCreate( 1, (unsigned portBASE_TYPE) sizeof(uint16_t));
-	ADC_Queue = xQueueCreate( 1, (unsigned portBASE_TYPE) sizeof(char));
+	Term_Queue = xQueueCreate( 2, (unsigned portBASE_TYPE) sizeof(uint16_t));
+	ADC_Queue = xQueueCreate( 2, (unsigned portBASE_TYPE) sizeof(uint8_t));
 
-	xTaskCreate(vStartTerminal,"Terminal",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,Terminal_CommHandle);
-	xTaskCreate(vStartADC,"ADC",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,ADC_CommHandle);
+	xTaskCreate(vTerminal,"Terminal",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,NULL);
+	xTaskCreate(vADC,"ADC",configMINIMAL_STACK_SIZE,NULL,IDLE_TaskPriority + 1,NULL);
+
+
 }
 
-
-/**
- * @brief Służy do odbierania komend oraz wysyłania wyników pomiarów przetwornika
- * @param argument
- */
-void vStartTerminal(void  * argument)
+void vTerminal(void  * argument)
 {
-
-char voltage[9] = "0.000 V\n\r"; /*!< tablica przechowująca wynik ostatnio zmierzonej wartości napięcia */
-
-uint8_t len; /*! zmienna pomocnicza przechowująca długość odbieranych danych */
-uint16_t tmp =0; /*! zmienna pomocnicza za pomocą której dokonuje się konwersji napięcia na ciąg znaków */
+uint8_t i;
+uint8_t voltage[10] = "0.000 V\n\r";
+uint16_t tmp =0;
 
   for(;;)
   {
-	  if(ReceivedDataFlag == 1){
-	  	ReceivedDataFlag = 0;
-	  	len = sprintf((char*)str,"%c\n\r",(char)ReceivedData);
-	  	xQueueSendToFront(ADC_Queue, &ReceivedData, 5);
-	  	CDC_Transmit_HS((uint8_t*)str,len);
-	  	xSemaphoreGive(ADC_Sem);
-	  }
 
-	if(xSemaphoreTake(Term_Sem,0)){
-	xQueueReceive(Term_Queue,&tmp,0);
-
-	voltage[4] = '0' + tmp%10;
-	tmp/=10;
-	voltage[3] = '0' + tmp%10;
-	tmp/=10;
-	voltage[2] = '0' + tmp%10;
-	tmp/=10;
-	voltage[1] = '.';
-
-	voltage[0] = '0' + tmp%10;
+	if(xQueueReceive(Term_Queue,&tmp,0) == pdTRUE){
+			tmp = 256*tmp/100/4096;
+			for(i =4;i<0;i--){
+			if(i ==1 ) continue;
+			voltage[i] = '0' + tmp%10;
+			tmp/=10;
+		}
 
 	CDC_Transmit_HS((uint8_t*)voltage,9);
   }
-
-	vTaskDelay(100);
+	vTaskDelay(100/portTICK_RATE_MS);
   }
 }
 
-/**
- * @brief Funkcja odpowiedzialna za obsługę przetowrnika. Zmienia kanały przetwornika oraz pobiera przetowrzone napięcie.
- * Obsługuje tryby pojedynczego pomiaru jak i tzw. trybu "continous". Tryb continous zwraca wartość napięcia co określoną jednostkę czasu.
- *
- * @param argument
- */
-void vStartADC(void  * argument)
+void vADC(void  * argument)
 {
 
 	uint16_t result;
-	char instr;
+	uint8_t instr;
 	uint8_t zmiana_ADC = 0;
 	uint8_t continous = 0;
 	uint8_t currentADC = 1;
+	HAL_ADC_Start((ADC_HandleTypeDef *) AvailableADC[currentADC-1]);
 
   for(;;)
   {
-		HAL_ADC_Start((ADC_HandleTypeDef *) AvailableADC[currentADC-1]);
 
-	if( xSemaphoreTake(ADC_Sem, 0)){
-		xQueueReceive(ADC_Queue,&instr,1);
+	if( xQueueReceive(ADC_Queue,&instr,1) == pdTRUE){
+		HAL_TIM_Base_Stop_IT(&htim6);
 		continous = 0;
 		switch (instr){
+			case 'C':
 			case 'c':{
+				HAL_TIM_Base_Start_IT(&htim6);
 				continous = 1;
 				break;
 			}
-
+			case 'S':
 			case 's':{
-				result = (2.56* (4096/HAL_ADC_GetValue((ADC_HandleTypeDef *) AvailableADC[currentADC-1])));
+				result = HAL_ADC_GetValue((ADC_HandleTypeDef *) AvailableADC[currentADC-1]);
 				xQueueSendToFront(Term_Queue, &result,5);
-				xSemaphoreGive(Term_Sem);
 				break;
 			}
+			case 'I':
 			case 'i':{
 				zmiana_ADC = 1;
 				break;
@@ -156,12 +112,12 @@ void vStartADC(void  * argument)
 		}
 	}
 
-	if(continous == 1){
-		result =(2.56* (4096/HAL_ADC_GetValue((ADC_HandleTypeDef *) AvailableADC[currentADC-1])));
+	if(continous == 1 && xSemaphoreTake(Delay_Sem,0) == pdTRUE){
+		result = HAL_ADC_GetValue((ADC_HandleTypeDef *) AvailableADC[currentADC-1]);
 		xQueueSendToBack(Term_Queue, &result,5);
-		xSemaphoreGive(Term_Sem);
-		vTaskDelay(990);
 		}
-	vTaskDelay(10);
+	vTaskDelay(10/portTICK_RATE_MS);
   }
 }
+
+

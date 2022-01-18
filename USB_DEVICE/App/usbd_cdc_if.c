@@ -265,18 +265,18 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 11 */
+	extern xQueueHandle ADC_Queue;
+
+uint8_t str[4] = "C\n\r";
+
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceHS);
 
-  extern uint8_t ReceivedData[2];
-  extern uint8_t ReceivedDataFlag;
+   if(*Buf > 47 && *Buf < 123) str[0] = *Buf;
+   else str[0] = '?';
+   CDC_Transmit_HS(str,3);
+   xQueueSendToFront(ADC_Queue, &str[0], 5);
 
-  ReceivedData[0] = 0;
-  ReceivedData[1] = 0;
-
-
-   strlcpy((char*)ReceivedData, (char*)Buf, (*Len) + 1);
-   ReceivedDataFlag = 1;
 
   return (USBD_OK);
   /* USER CODE END 11 */

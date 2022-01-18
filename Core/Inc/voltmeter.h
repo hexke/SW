@@ -5,10 +5,9 @@
 #include "cmsis_os.h"
 
 #include "usbd_cdc_if.h"
-#include <stdio.h>
 
 void Voltmeter_init(void);
-void vStartTerminal(void  * argument);
-void vStartADC(void  * argument);
+void vTerminal(void  * argument);
+void vADC(void  * argument);
 
 #endif//VOLTMETER_H

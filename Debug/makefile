@@ -69,8 +69,8 @@ all: main-build
 main-build: SW.elf secondary-outputs
 
 # Tool invocations
-SW.elf: $(OBJS) $(USER_OBJS) C:\Users\karow\Downloads\SW_EiT\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "SW.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\karow\Downloads\SW_EiT\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SW.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+SW.elf: $(OBJS) $(USER_OBJS) C:\Users\rczer\OneDrive\Desktop\SW\STM32H723ZGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "SW.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\rczer\OneDrive\Desktop\SW\STM32H723ZGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SW.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
