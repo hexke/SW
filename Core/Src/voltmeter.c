@@ -18,9 +18,10 @@ const uint32_t AvailableADC[] = {
 		(uint32_t) &hadc2,
 		(uint32_t) &hadc3};
 
-
+/** semafor sygnalizuje upłynięcie jednej sekundy*/
 volatile xSemaphoreHandle Delay_Sem;
 
+/** Kolejki wykorzystywane do przesylu informacji do task'ów*/
  xQueueHandle Term_Queue;
  volatile xQueueHandle ADC_Queue;
 

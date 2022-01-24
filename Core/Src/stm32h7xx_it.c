@@ -166,6 +166,8 @@ void DebugMon_Handler(void)
 
 /**
   * @brief This function handles TIM6 global interrupt, DAC1_CH1 and DAC1_CH2 underrun error interrupts.
+  * Wewnątrz tej funkcji ustawiany jest semafor gdy timer TIM6 odliczy interwał czasowy równy jedne sekundzie.
+  * Wykorzystywany jest w jednym z zadań programu. - task vADC.
   */
 void TIM6_DAC_IRQHandler(void)
 {
